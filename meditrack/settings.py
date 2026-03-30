@@ -14,6 +14,9 @@ DEBUG = os.environ.get('DEBUG', 'False').lower() == 'true'
 
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
 
+# Allow CSRF POST requests over Render's HTTPS proxy
+CSRF_TRUSTED_ORIGINS = ['https://' + host for host in ALLOWED_HOSTS if host != '*']
+
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
