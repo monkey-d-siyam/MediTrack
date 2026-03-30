@@ -1,5 +1,4 @@
 <div align="center">
-  <img src="https://via.placeholder.com/150x150?text=MediTrack+Logo" alt="MediTrack Logo">
   <h1>MediTrack</h1>
   <h3>AI-Powered Health Monitoring Web App</h3>
 </div>
