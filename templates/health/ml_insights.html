@@ -1,0 +1,439 @@
+{% extends 'base.html' %}
+{% block title %}AI Model Insights{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-4">
+
+    <!-- ── Page Header ──────────────────────────────────────────────────────── -->
+    <div class="d-flex align-items-start justify-content-between mb-4 flex-wrap gap-2">
+        <div>
+            <h1 class="page-title mb-0">
+                <i class="bi bi-cpu-fill me-2" style="color:var(--violet)"></i>AI Model Insights
+            </h1>
+            <p class="text-muted mt-1 mb-0">
+                Understand how the ML model makes risk predictions.
+            </p>
+        </div>
+        <div class="model-badge-pill">
+            <i class="bi bi-diagram-3-fill me-1"></i>
+            {{ evaluation.model_type|default:"GradientBoostingClassifier" }}
+        </div>
+    </div>
+
+    {% if not evaluation %}
+    <div class="empty-state-card text-center py-5">
+        <div class="empty-icon mb-3"><i class="bi bi-cpu"></i></div>
+        <h3>Model not trained yet</h3>
+        <p class="text-muted">Run <code>python health/ml/train_model.py</code> to train the model.</p>
+    </div>
+    {% else %}
+
+    <!-- ── Top Metric Cards ──────────────────────────────────────────────────── -->
+    <div class="row g-3 mb-4">
+
+        <div class="col-6 col-md-4 col-lg-2">
+            <div class="kpi-card score-kpi">
+                <div class="kpi-icon"><i class="bi bi-bullseye"></i></div>
+                <div class="kpi-body">
+                    <div class="kpi-value" style="color:var(--emerald)">{{ evaluation.accuracy|floatformat:2 }}</div>
+                    <div class="kpi-label">Test Accuracy</div>
+                    <div class="kpi-sub">holdout set</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-6 col-md-4 col-lg-2">
+            <div class="kpi-card">
+                <div class="kpi-icon"><i class="bi bi-check2-circle"></i></div>
+                <div class="kpi-body">
+                    <div class="kpi-value" style="color:var(--cyan)">{{ evaluation.precision_macro|floatformat:2 }}</div>
+                    <div class="kpi-label">Precision</div>
+                    <div class="kpi-sub">macro avg</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-6 col-md-4 col-lg-2">
+            <div class="kpi-card">
+                <div class="kpi-icon"><i class="bi bi-arrow-repeat"></i></div>
+                <div class="kpi-body">
+                    <div class="kpi-value" style="color:var(--amber)">{{ evaluation.recall_macro|floatformat:2 }}</div>
+                    <div class="kpi-label">Recall</div>
+                    <div class="kpi-sub">macro avg</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-6 col-md-4 col-lg-2">
+            <div class="kpi-card avg-kpi">
+                <div class="kpi-icon"><i class="bi bi-bar-chart-fill"></i></div>
+                <div class="kpi-body">
+                    <div class="kpi-value" style="color:var(--indigo-light)">{{ evaluation.f1_macro|floatformat:2 }}</div>
+                    <div class="kpi-label">Macro F1</div>
+                    <div class="kpi-sub">all classes avg</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-6 col-md-4 col-lg-2">
+            <div class="kpi-card logs-kpi">
+                <div class="kpi-icon"><i class="bi bi-layers-fill"></i></div>
+                <div class="kpi-body">
+                    <div class="kpi-value" style="color:var(--violet)">{{ evaluation.cv_mean|floatformat:2 }}</div>
+                    <div class="kpi-label">CV Accuracy</div>
+                    <div class="kpi-sub">5-fold avg</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-6 col-md-4 col-lg-2">
+            <div class="kpi-card">
+                <div class="kpi-icon"><i class="bi bi-database-fill"></i></div>
+                <div class="kpi-body">
+                    <div class="kpi-value" style="color:var(--text-muted)">{{ evaluation.n_train }}</div>
+                    <div class="kpi-label">Train Samples</div>
+                    <div class="kpi-sub">+ {{ evaluation.n_test }} test</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Confusion Matrix + Feature Importance ──────────────────────────── -->
+    <div class="row g-4 mb-4">
+
+        <!-- Confusion Matrix -->
+        <div class="col-lg-5">
+            <div class="chart-card h-100">
+                <div class="chart-header">
+                    <h5 class="chart-title">
+                        <i class="bi bi-grid-3x3-gap-fill me-2" style="color:var(--violet)"></i>Confusion Matrix
+                    </h5>
+                    <span class="badge bg-violet-subtle">Predicted vs Actual</span>
+                </div>
+                <div class="chart-body">
+                    <!-- Visual grid confusion matrix -->
+                    <div class="cm-grid" id="cmGrid">
+                        <!-- Header row -->
+                        <div class="cm-corner"></div>
+                        {% for label in evaluation.class_labels %}
+                        <div class="cm-col-header">{{ label }}</div>
+                        {% endfor %}
+                        <!-- Data rows -->
+                        {% for row_idx in "012" %}
+                        {% with row=evaluation.confusion_matrix|slice:row_idx %}
+                        {% endwith %}
+                        {% endfor %}
+                    </div>
+                    <!-- Render via JS -->
+                    <canvas id="cmChart" height="220"></canvas>
+                    <p class="text-muted text-center mt-2" style="font-size:0.75rem;">
+                        Rows = Actual · Columns = Predicted · Diagonal = Correct
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Feature Importance -->
+        <div class="col-lg-7">
+            <div class="chart-card h-100">
+                <div class="chart-header">
+                    <h5 class="chart-title">
+                        <i class="bi bi-sort-down-alt me-2" style="color:var(--cyan)"></i>Feature Importance
+                    </h5>
+                    <span class="badge bg-cyan-subtle text-cyan">Impact on Predictions</span>
+                </div>
+                <div class="chart-body">
+                    <canvas id="importanceChart" height="160"></canvas>
+                    <div class="mt-3 d-flex flex-column gap-2">
+                        {% for item in importance %}
+                        <div class="importance-row">
+                            <div class="importance-label">{{ item.feature }}</div>
+                            <div class="importance-bar-wrap">
+                                <div class="importance-bar" style="width: {{ item.percentage }}%;"
+                                     data-val="{{ item.percentage }}"></div>
+                            </div>
+                            <div class="importance-pct">{{ item.percentage }}%</div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <p class="text-muted mt-3" style="font-size:0.78rem;">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Feature importance shows how much each input contributes to the model's risk classification.
+                        Higher = stronger predictor of health risk.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Per-Class Metrics Table ──────────────────────────────────────────── -->
+    <div class="row g-4 mb-4">
+        <div class="col-lg-7">
+            <div class="chart-card">
+                <div class="chart-header">
+                    <h5 class="chart-title">
+                        <i class="bi bi-table me-2 text-primary"></i>Per-Class Performance
+                    </h5>
+                </div>
+                <div class="table-responsive">
+                    <table class="table mt-table mb-0">
+                        <thead>
+                            <tr>
+                                <th>Risk Class</th>
+                                <th>Precision</th>
+                                <th>Recall</th>
+                                <th>F1 Score</th>
+                                <th>Support</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in evaluation.per_class %}
+                            <tr>
+                                <td>
+                                    {% if row.label == 'Low Risk' %}
+                                    <span class="risk-tag risk-low">{{ row.label }}</span>
+                                    {% elif row.label == 'Medium Risk' %}
+                                    <span class="risk-tag risk-medium">{{ row.label }}</span>
+                                    {% else %}
+                                    <span class="risk-tag risk-high">{{ row.label }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="metric-with-bar">
+                                        <span>{{ row.precision|floatformat:3 }}</span>
+                                        <div class="mini-bar"><div style="width:{% widthratio row.precision 1 100 %}%"></div></div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="metric-with-bar">
+                                        <span>{{ row.recall|floatformat:3 }}</span>
+                                        <div class="mini-bar"><div style="width:{% widthratio row.recall 1 100 %}%"></div></div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="metric-with-bar">
+                                        <span>{{ row.f1|floatformat:3 }}</span>
+                                        <div class="mini-bar"><div style="width:{% widthratio row.f1 1 100 %}%"></div></div>
+                                    </div>
+                                </td>
+                                <td class="text-muted">{{ row.support }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Model Explainer Card -->
+        <div class="col-lg-5">
+            <div class="explainer-card h-100">
+                <div class="explainer-header">
+                    <h5 class="mb-0"><i class="bi bi-lightbulb-fill me-2"></i>How It Works</h5>
+                </div>
+                <div class="explainer-body">
+                    <div class="explainer-step">
+                        <div class="step-num">1</div>
+                        <div>
+                            <strong>You log health data</strong>
+                            <small class="d-block text-muted">Heart rate, sleep, steps, BMI</small>
+                        </div>
+                    </div>
+                    <div class="explainer-step">
+                        <div class="step-num">2</div>
+                        <div>
+                            <strong>Feature scaling</strong>
+                            <small class="d-block text-muted">StandardScaler normalises inputs for the model</small>
+                        </div>
+                    </div>
+                    <div class="explainer-step">
+                        <div class="step-num">3</div>
+                        <div>
+                            <strong>GradientBoosting inference</strong>
+                            <small class="d-block text-muted">200 decision trees vote on your risk level</small>
+                        </div>
+                    </div>
+                    <div class="explainer-step">
+                        <div class="step-num">4</div>
+                        <div>
+                            <strong>Probability output</strong>
+                            <small class="d-block text-muted">P(Low) + P(Medium) + P(High) = 100%</small>
+                        </div>
+                    </div>
+                    <div class="explainer-step">
+                        <div class="step-num">5</div>
+                        <div>
+                            <strong>Personalised suggestions</strong>
+                            <small class="d-block text-muted">Generated from metric-level analysis</small>
+                        </div>
+                    </div>
+
+                    <div class="mt-4 p-3 rounded-3" style="background:rgba(99,102,241,0.07);border:1px solid rgba(99,102,241,0.15);">
+                        <small class="text-muted">
+                            <i class="bi bi-shield-check-fill text-success me-1"></i>
+                            <strong>Transparency note:</strong> This model was trained on 5,000 synthetic samples
+                            reflecting real-world health distributions. It is intended as a
+                            wellness guide, not a medical diagnosis.
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const cmFlat   = {{ cm_flat|safe }};
+const cmLabels = {{ cm_labels|safe }};
+const cmSize   = {{ cm_size }};
+const featNames = {{ feat_names|safe }};
+const featVals  = {{ feat_vals|safe }};
+
+// ── Confusion Matrix Heatmap ─────────────────────────────────────────────────
+if (document.getElementById('cmChart') && cmFlat.length) {
+    // Build heatmap using scatter with bubble-like approach
+    const maxVal = Math.max(...cmFlat);
+
+    // Generate dataset: one colour per cell
+    const datasets = [];
+    const colours = [
+        'rgba(52,211,153,VAL)', // diagonal (correct)
+        'rgba(244,63,94,VAL)',  // off-diagonal (error)
+    ];
+
+    const data = [];
+    for (let r = 0; r < cmSize; r++) {
+        for (let c = 0; c < cmSize; c++) {
+            const val = cmFlat[r * cmSize + c];
+            const alpha = 0.2 + 0.75 * (val / maxVal);
+            const isCorrect = r === c;
+            data.push({
+                x: c, y: cmSize - 1 - r,
+                v: val,
+                bg: isCorrect
+                    ? `rgba(52,211,153,${alpha})`
+                    : `rgba(244,63,94,${alpha})`
+            });
+        }
+    }
+
+    new Chart(document.getElementById('cmChart'), {
+        type: 'scatter',
+        data: {
+            datasets: [{
+                data: data,
+                backgroundColor: data.map(d => d.bg),
+                pointRadius: 38,
+                pointHoverRadius: 40,
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: (ctx) => {
+                            const d = ctx.raw;
+                            const actual = cmLabels[cmSize - 1 - d.y];
+                            const pred   = cmLabels[d.x];
+                            return [`Actual: ${actual}`, `Predicted: ${pred}`, `Count: ${d.v}`];
+                        }
+                    },
+                    backgroundColor: 'rgba(15,20,40,0.95)',
+                    bodyColor: '#e2e8f0',
+                    padding: 10,
+                    cornerRadius: 8,
+                }
+            },
+            scales: {
+                x: {
+                    min: -0.5, max: cmSize - 0.5,
+                    ticks: {
+                        callback: (v) => cmLabels[v]?.replace(' Risk','') || '',
+                        color: '#94a3b8', font: { size: 10 }
+                    },
+                    grid: { color: 'rgba(255,255,255,0.04)' },
+                    title: { display: true, text: 'Predicted', color: '#64748b', font: { size: 11 } }
+                },
+                y: {
+                    min: -0.5, max: cmSize - 0.5,
+                    ticks: {
+                        callback: (v) => cmLabels[cmSize - 1 - v]?.replace(' Risk','') || '',
+                        color: '#94a3b8', font: { size: 10 }
+                    },
+                    grid: { color: 'rgba(255,255,255,0.04)' },
+                    title: { display: true, text: 'Actual', color: '#64748b', font: { size: 11 } }
+                }
+            }
+        },
+        plugins: [{
+            id: 'cmLabels',
+            afterDraw(chart) {
+                const ctx2 = chart.ctx;
+                chart.data.datasets[0].data.forEach((d, i) => {
+                    const meta = chart.getDatasetMeta(0);
+                    const pt   = meta.data[i];
+                    ctx2.fillStyle = '#f1f5f9';
+                    ctx2.font = 'bold 13px Inter, sans-serif';
+                    ctx2.textAlign = 'center';
+                    ctx2.textBaseline = 'middle';
+                    ctx2.fillText(d.v, pt.x, pt.y);
+                });
+            }
+        }]
+    });
+}
+
+// ── Feature Importance Bar Chart ─────────────────────────────────────────────
+if (document.getElementById('importanceChart') && featVals.length) {
+    const colours = [
+        'rgba(99,102,241,0.85)',
+        'rgba(34,211,238,0.85)',
+        'rgba(52,211,153,0.85)',
+        'rgba(251,191,36,0.85)',
+    ];
+    new Chart(document.getElementById('importanceChart'), {
+        type: 'bar',
+        data: {
+            labels: featNames,
+            datasets: [{
+                data: featVals,
+                backgroundColor: colours,
+                borderRadius: 6,
+                borderSkipped: false,
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: { label: ctx => ` ${ctx.raw.toFixed(2)}% importance` },
+                    backgroundColor: 'rgba(15,20,40,0.95)',
+                    bodyColor: '#e2e8f0',
+                    padding: 10,
+                    cornerRadius: 8,
+                }
+            },
+            scales: {
+                x: {
+                    grid: { color: 'rgba(255,255,255,0.04)' },
+                    ticks: { color: '#94a3b8', callback: v => v + '%' },
+                    max: Math.ceil(Math.max(...featVals) + 5),
+                },
+                y: {
+                    grid: { display: false },
+                    ticks: { color: '#e2e8f0', font: { size: 12 } },
+                }
+            }
+        }
+    });
+}
+</script>
+{% endblock %}

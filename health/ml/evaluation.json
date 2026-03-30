@@ -1,0 +1,56 @@
+{
+  "accuracy": 0.7532,
+  "precision_macro": 0.7179,
+  "recall_macro": 0.7173,
+  "f1_macro": 0.7172,
+  "cv_mean": 0.7623,
+  "cv_std": 0.0426,
+  "confusion_matrix": [
+    [
+      13,
+      8,
+      2
+    ],
+    [
+      9,
+      58,
+      10
+    ],
+    [
+      0,
+      9,
+      45
+    ]
+  ],
+  "class_labels": [
+    "Low Risk",
+    "Medium Risk",
+    "High Risk"
+  ],
+  "per_class": [
+    {
+      "label": "Low Risk",
+      "precision": 0.5909,
+      "recall": 0.5652,
+      "f1": 0.5778,
+      "support": 23
+    },
+    {
+      "label": "Medium Risk",
+      "precision": 0.7733,
+      "recall": 0.7532,
+      "f1": 0.7632,
+      "support": 77
+    },
+    {
+      "label": "High Risk",
+      "precision": 0.7895,
+      "recall": 0.8333,
+      "f1": 0.8108,
+      "support": 54
+    }
+  ],
+  "n_train": 614,
+  "n_test": 154,
+  "model_type": "GradientBoostingClassifier (Trained on Healthcare Data)"
+}

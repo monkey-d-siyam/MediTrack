@@ -1,0 +1,410 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-4">
+
+    <!-- ── Page Header ──────────────────────────────────────────────────────── -->
+    <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+        <div>
+            <h1 class="page-title mb-0">
+                <i class="bi bi-grid-fill me-2 text-primary"></i>Dashboard
+            </h1>
+            <p class="text-muted mb-0 mt-1">
+                Hello, <strong>{{ user.get_full_name|default:user.username }}</strong> 👋
+            </p>
+        </div>
+        <a href="{% url 'log_health' %}" class="btn btn-primary-glow">
+            <i class="bi bi-plus-circle-fill me-2"></i>Log Today's Data
+        </a>
+    </div>
+
+    {% if not latest_log %}
+    <div class="empty-state-card text-center py-5">
+        <div class="empty-icon mb-3"><i class="bi bi-clipboard2-pulse"></i></div>
+        <h3>No health data yet</h3>
+        <p class="text-muted">Log your first health entry to see your dashboard come alive with AI insights.</p>
+        <a href="{% url 'log_health' %}" class="btn btn-primary-glow mt-2">
+            <i class="bi bi-plus-circle-fill me-2"></i>Log Your First Entry
+        </a>
+    </div>
+
+    {% else %}
+
+    <!-- ── KPI Row ───────────────────────────────────────────────────────────── -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3">
+            <div class="kpi-card score-kpi">
+                <div class="kpi-icon"><i class="bi bi-activity"></i></div>
+                <div class="kpi-body">
+                    <div class="kpi-value">{{ latest_log.score|floatformat:0 }}</div>
+                    <div class="kpi-label">Health Score</div>
+                    <div class="kpi-sub">out of 100</div>
+                </div>
+                <div class="score-ring">
+                    <svg viewBox="0 0 36 36" class="circular-chart">
+                        <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                        <path class="circle-fill" stroke-dasharray="{{ latest_log.score }}, 100"
+                              d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                    </svg>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-6 col-md-3">
+            <div class="kpi-card risk-kpi risk-{{ latest_log.risk_level }}">
+                <div class="kpi-icon">
+                    {% if latest_log.risk_level == 'low' %}<i class="bi bi-shield-check-fill"></i>
+                    {% elif latest_log.risk_level == 'medium' %}<i class="bi bi-shield-exclamation"></i>
+                    {% else %}<i class="bi bi-shield-fill-exclamation"></i>{% endif %}
+                </div>
+                <div class="kpi-body">
+                    <div class="kpi-value">{{ latest_log.risk_level|capfirst }}</div>
+                    <div class="kpi-label">ML Risk Level</div>
+                    <div class="risk-badge badge-{{ latest_log.risk_level }}">AI Prediction</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-6 col-md-3">
+            <div class="kpi-card logs-kpi">
+                <div class="kpi-icon"><i class="bi bi-journal-medical"></i></div>
+                <div class="kpi-body">
+                    <div class="kpi-value">{{ total_logs }}</div>
+                    <div class="kpi-label">Total Logs</div>
+                    <div class="kpi-sub">entries recorded</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-6 col-md-3">
+            <div class="kpi-card avg-kpi">
+                <div class="kpi-icon"><i class="bi bi-bar-chart-line-fill"></i></div>
+                <div class="kpi-body">
+                    <div class="kpi-value">{{ stats.avg_score|floatformat:0|default:"—" }}</div>
+                    <div class="kpi-label">Avg Score</div>
+                    <div class="kpi-sub">all-time</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Main Charts Row ──────────────────────────────────────────────────── -->
+    <div class="row g-3 mb-4">
+
+        <!-- Score Trend -->
+        <div class="col-lg-8">
+            <div class="chart-card h-100">
+                <div class="chart-header">
+                    <h5 class="chart-title">
+                        <i class="bi bi-graph-up-arrow me-2 text-primary"></i>Health Score Trend
+                    </h5>
+                    <span class="badge bg-primary-subtle text-primary">Last 14 entries</span>
+                </div>
+                <canvas id="scoreChart" height="110"></canvas>
+            </div>
+        </div>
+
+        <!-- Risk Distribution Donut -->
+        <div class="col-lg-4">
+            <div class="chart-card h-100">
+                <div class="chart-header">
+                    <h5 class="chart-title">
+                        <i class="bi bi-pie-chart-fill me-2 text-violet"></i>Risk Distribution
+                    </h5>
+                </div>
+                <div class="d-flex align-items-center justify-content-center" style="height:160px;">
+                    <canvas id="riskDonut"></canvas>
+                </div>
+                <div class="d-flex justify-content-center gap-3 mt-2">
+                    <span class="risk-tag risk-low">Low: {{ risk_counts.low }}</span>
+                    <span class="risk-tag risk-medium">Med: {{ risk_counts.medium }}</span>
+                    <span class="risk-tag risk-high">High: {{ risk_counts.high }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Secondary Charts ──────────────────────────────────────────────────── -->
+    <div class="row g-3 mb-4">
+        <div class="col-lg-6">
+            <div class="chart-card">
+                <div class="chart-header">
+                    <h5 class="chart-title"><i class="bi bi-heart-fill me-2 text-danger"></i>Heart Rate</h5>
+                </div>
+                <canvas id="hrChart" height="120"></canvas>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="chart-card">
+                <div class="chart-header">
+                    <h5 class="chart-title"><i class="bi bi-moon-fill me-2 text-info"></i>Sleep & Steps</h5>
+                </div>
+                <canvas id="sleepStepsChart" height="120"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Latest Metrics + AI Explanations ─────────────────────────────────── -->
+    <div class="row g-3 mb-4">
+
+        <!-- Metric bars -->
+        <div class="col-lg-4">
+            <div class="chart-card h-100">
+                <div class="chart-header">
+                    <h5 class="chart-title"><i class="bi bi-radar me-2 text-info"></i>Latest Metrics</h5>
+                    <small class="text-muted">{{ latest_log.created_at|date:"M d" }}</small>
+                </div>
+                <div class="d-flex flex-column gap-3 mt-1">
+                    <div class="metric-bar">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span><i class="bi bi-heart-fill text-danger me-1"></i>Heart Rate</span>
+                            <strong>{{ latest_log.heart_rate|floatformat:0 }} bpm</strong>
+                        </div>
+                        <div class="progress" style="height:7px;">
+                            <div class="progress-bar bg-danger" style="width: {% widthratio latest_log.heart_rate 200 100 %}%;"></div>
+                        </div>
+                    </div>
+                    <div class="metric-bar">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span><i class="bi bi-moon-stars-fill text-info me-1"></i>Sleep</span>
+                            <strong>{{ latest_log.sleep_hours|floatformat:1 }} hrs</strong>
+                        </div>
+                        <div class="progress" style="height:7px;">
+                            <div class="progress-bar bg-info" style="width: {% widthratio latest_log.sleep_hours 12 100 %}%;"></div>
+                        </div>
+                    </div>
+                    <div class="metric-bar">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span><i class="bi bi-person-walking text-success me-1"></i>Steps</span>
+                            <strong>{{ latest_log.steps }}</strong>
+                        </div>
+                        <div class="progress" style="height:7px;">
+                            <div class="progress-bar bg-success" style="width: {% widthratio latest_log.steps 15000 100 %}%;"></div>
+                        </div>
+                    </div>
+                    <div class="metric-bar">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span><i class="bi bi-speedometer2 text-warning me-1"></i>BMI</span>
+                            <strong>{{ latest_log.bmi|floatformat:1 }}</strong>
+                        </div>
+                        <div class="progress" style="height:7px;">
+                            <div class="progress-bar bg-warning" style="width: {% widthratio latest_log.bmi 40 100 %}%;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- AI Feature Explanations -->
+        <div class="col-lg-4">
+            <div class="chart-card h-100">
+                <div class="chart-header">
+                    <h5 class="chart-title"><i class="bi bi-search me-2" style="color:var(--cyan)"></i>ML Explanation</h5>
+                    <a href="{% url 'ml_insights' %}" class="btn btn-sm btn-link-primary">Full Report</a>
+                </div>
+                <div class="d-flex flex-column gap-2 mt-1">
+                    {% for exp in explanations %}
+                    <div class="explanation-row impact-{{ exp.impact }}">
+                        <div class="exp-feature">{{ exp.feature }}</div>
+                        <div class="exp-value">{{ exp.value }}</div>
+                        <div class="exp-status">{{ exp.status }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- AI Suggestions -->
+        <div class="col-lg-4">
+            <div class="suggestions-card h-100">
+                <div class="suggestions-header">
+                    <h5 class="mb-0"><i class="bi bi-robot me-2"></i>AI Tips</h5>
+                    <span class="badge bg-ai">Personalised</span>
+                </div>
+                <div class="suggestions-body">
+                    <ul class="suggestions-list">
+                        {% for tip in suggestions %}
+                        <li class="suggestion-item">{{ tip }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Recent Logs Table ─────────────────────────────────────────────────── -->
+    <div class="chart-card">
+        <div class="chart-header">
+            <h5 class="chart-title"><i class="bi bi-clock-history me-2 text-primary"></i>Recent Entries</h5>
+            <a href="{% url 'history' %}" class="btn btn-sm btn-link-primary">View All →</a>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover mt-table mb-0">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Score</th>
+                        <th>ML Risk</th>
+                        <th>HR</th>
+                        <th>Sleep</th>
+                        <th>Steps</th>
+                        <th>BMI</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in recent_logs %}
+                    <tr onclick="window.location='{% url 'log_detail' log.pk %}'" style="cursor:pointer;">
+                        <td class="text-muted small">{{ log.created_at|date:"M d, Y" }}</td>
+                        <td><span class="score-pill">{{ log.score|floatformat:0 }}</span></td>
+                        <td><span class="risk-tag risk-{{ log.risk_level }}">{{ log.risk_level|capfirst }}</span></td>
+                        <td class="text-muted">{{ log.heart_rate|floatformat:0 }}</td>
+                        <td class="text-muted">{{ log.sleep_hours|floatformat:1 }}</td>
+                        <td class="text-muted">{{ log.steps }}</td>
+                        <td class="text-muted">{{ log.bmi|floatformat:1 }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const labels     = {{ chart_labels|safe }};
+const scores     = {{ chart_scores|safe }};
+const hrData     = {{ chart_hr|safe }};
+const sleepData  = {{ chart_sleep|safe }};
+const stepsData  = {{ chart_steps|safe }};
+const riskCounts = {{ risk_counts_json|safe }};
+
+const tooltipBase = {
+    backgroundColor: 'rgba(10,14,35,0.97)',
+    titleColor: '#a5b4fc',
+    bodyColor: '#e2e8f0',
+    borderColor: 'rgba(99,102,241,0.3)',
+    borderWidth: 1,
+    padding: 12,
+    cornerRadius: 10,
+};
+const gridColor = 'rgba(255,255,255,0.04)';
+const tickColor = '#64748b';
+
+// Score Trend
+if (document.getElementById('scoreChart')) {
+    new Chart(document.getElementById('scoreChart'), {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [{
+                data: scores,
+                borderColor: '#6366f1',
+                backgroundColor: (ctx) => {
+                    const g = ctx.chart.ctx.createLinearGradient(0, 0, 0, 280);
+                    g.addColorStop(0, 'rgba(99,102,241,0.3)');
+                    g.addColorStop(1, 'rgba(99,102,241,0)');
+                    return g;
+                },
+                fill: true, tension: 0.4,
+                pointBackgroundColor: scores.map(s => s >= 70 ? '#34d399' : s >= 40 ? '#fbbf24' : '#f43f5e'),
+                pointRadius: 5, pointHoverRadius: 7, borderWidth: 2.5,
+            }]
+        },
+        options: {
+            responsive: true, plugins: { legend: { display: false }, tooltip: tooltipBase },
+            scales: {
+                x: { grid: { color: gridColor }, ticks: { color: tickColor, font: { size: 10 } } },
+                y: { grid: { color: gridColor }, ticks: { color: tickColor }, min: 0, max: 100 }
+            }
+        }
+    });
+}
+
+// Risk Donut
+if (document.getElementById('riskDonut')) {
+    new Chart(document.getElementById('riskDonut'), {
+        type: 'doughnut',
+        data: {
+            labels: ['Low', 'Medium', 'High'],
+            datasets: [{
+                data: riskCounts,
+                backgroundColor: ['rgba(52,211,153,0.85)', 'rgba(251,191,36,0.85)', 'rgba(244,63,94,0.85)'],
+                borderColor: 'transparent',
+                borderRadius: 4,
+                hoverOffset: 6,
+            }]
+        },
+        options: {
+            cutout: '68%',
+            plugins: {
+                legend: { display: false },
+                tooltip: { ...tooltipBase, callbacks: { label: ctx => ` ${ctx.label}: ${ctx.raw} logs` } }
+            }
+        }
+    });
+}
+
+// Heart Rate
+if (document.getElementById('hrChart')) {
+    new Chart(document.getElementById('hrChart'), {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [{
+                data: hrData,
+                borderColor: '#f43f5e',
+                backgroundColor: 'rgba(244,63,94,0.1)',
+                fill: true, tension: 0.4,
+                pointBackgroundColor: '#f43f5e', pointRadius: 4, borderWidth: 2,
+            }]
+        },
+        options: {
+            responsive: true, plugins: { legend: { display: false }, tooltip: tooltipBase },
+            scales: {
+                x: { grid: { color: gridColor }, ticks: { color: tickColor, font: { size: 10 } } },
+                y: { grid: { color: gridColor }, ticks: { color: tickColor, callback: v => v + ' bpm' } }
+            }
+        }
+    });
+}
+
+// Sleep + Steps
+if (document.getElementById('sleepStepsChart')) {
+    new Chart(document.getElementById('sleepStepsChart'), {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [
+                {
+                    label: 'Sleep (hrs)',
+                    data: sleepData,
+                    backgroundColor: 'rgba(34,211,238,0.7)',
+                    borderRadius: 4, yAxisID: 'y',
+                },
+                {
+                    label: 'Steps (÷100)',
+                    data: stepsData.map(s => +(s / 100).toFixed(1)),
+                    backgroundColor: 'rgba(52,211,153,0.7)',
+                    borderRadius: 4, yAxisID: 'y',
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { display: true, labels: { color: '#94a3b8', font: { size: 11 }, boxWidth: 12 } },
+                tooltip: tooltipBase
+            },
+            scales: {
+                x: { grid: { color: gridColor }, ticks: { color: tickColor, font: { size: 10 } } },
+                y: { grid: { color: gridColor }, ticks: { color: tickColor } }
+            }
+        }
+    });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+{% block title %}Health History{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-4">
+
+    <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+        <div>
+            <h1 class="page-title mb-0">
+                <i class="bi bi-clock-history me-2 text-primary"></i>Health History
+            </h1>
+            <p class="text-muted mb-0 mt-1">All your health log entries — {{ logs.count }} total</p>
+        </div>
+        <a href="{% url 'log_health' %}" class="btn btn-primary-glow">
+            <i class="bi bi-plus-circle-fill me-2"></i>New Entry
+        </a>
+    </div>
+
+    {% if logs %}
+    <div class="chart-card">
+        <div class="table-responsive">
+            <table class="table table-hover mt-table mb-0">
+                <thead>
+                    <tr>
+                        <th>Date & Time</th>
+                        <th>Score</th>
+                        <th>Risk</th>
+                        <th>Heart Rate</th>
+                        <th>Sleep</th>
+                        <th>Steps</th>
+                        <th>BMI</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in logs %}
+                    <tr>
+                        <td>
+                            <span class="fw-semibold">{{ log.created_at|date:"M d, Y" }}</span>
+                            <small class="text-muted d-block">{{ log.created_at|time:"H:i" }}</small>
+                        </td>
+                        <td>
+                            <span class="score-pill score-pill-lg">{{ log.score|floatformat:0 }}</span>
+                        </td>
+                        <td>
+                            <span class="risk-tag risk-{{ log.risk_level }}">{{ log.risk_level|capfirst }}</span>
+                        </td>
+                        <td class="text-muted">{{ log.heart_rate|floatformat:0 }} <small>bpm</small></td>
+                        <td class="text-muted">{{ log.sleep_hours|floatformat:1 }} <small>hrs</small></td>
+                        <td class="text-muted">{{ log.steps }}</td>
+                        <td class="text-muted">{{ log.bmi|floatformat:1 }}</td>
+                        <td>
+                            <div class="d-flex gap-2">
+                                <a href="{% url 'log_detail' log.pk %}" class="btn btn-sm btn-outline-primary rounded-pill px-3">
+                                    <i class="bi bi-eye-fill me-1"></i>View
+                                </a>
+                                <form method="post" action="{% url 'delete_log' log.pk %}"
+                                      onsubmit="return confirm('Delete this entry?');">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill px-3">
+                                        <i class="bi bi-trash3-fill"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {% else %}
+    <div class="empty-state-card text-center py-5">
+        <div class="empty-icon mb-3"><i class="bi bi-journal-x"></i></div>
+        <h3>No entries yet</h3>
+        <p class="text-muted">Start tracking your health to see your history here.</p>
+        <a href="{% url 'log_health' %}" class="btn btn-primary-glow mt-2">
+            <i class="bi bi-plus-circle-fill me-2"></i>Log First Entry
+        </a>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}

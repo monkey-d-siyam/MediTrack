@@ -1,0 +1,22 @@
+[
+  {
+    "feature": "Daily Steps",
+    "importance": 0.47118,
+    "percentage": 47.12
+  },
+  {
+    "feature": "BMI",
+    "importance": 0.256616,
+    "percentage": 25.66
+  },
+  {
+    "feature": "Sleep Hours",
+    "importance": 0.205585,
+    "percentage": 20.56
+  },
+  {
+    "feature": "Heart Rate (bpm)",
+    "importance": 0.066619,
+    "percentage": 6.66
+  }
+]
