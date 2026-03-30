@@ -70,9 +70,7 @@ The pipeline utilizes a `GradientBoostingClassifier` evaluated via 5-Fold Strati
 
 | Dashboard | Log Health | Model Insights |
 | :---: | :---: | :---: |
-| C:\Users\jubor\MediTrack\assets\dashboard.png | assets/log_health.png | assets/ai_insights.png |
-
-*(Replace placeholders with actual application screenshots before publishing)*
+| <img src="assets/dashboard.png" width="350" alt="Dashboard View"> | <img src="assets/log_health.png" width="350" alt="Log Health View"> | <img src="assets/ai_insights.png" width="350" alt="Model Insights View"> |
 
 ---
 
