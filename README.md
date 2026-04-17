@@ -5,7 +5,7 @@
 
 ---
 
-## 📖 Overview
+## Overview
 
 **MediTrack** is an intelligent, full-stack healthcare application designed to bridge the gap between daily biometric tracking and predictive machine learning. Built for modern health monitoring, the system allows users to securely log their daily vitals and lifestyle metrics (Heart Rate, Sleep, Steps, and BMI) and leverages a trained supervised learning model to evaluate overall health risks.
 
@@ -13,7 +13,7 @@ This project was built to demonstrate the seamless integration of a **dynamic we
 
 ---
 
-## ✨ Features
+## Features
 
 - **Daily Health Logging:** Clean interface for users to record biometric checkpoints effortlessly.
 - **ML-Powered Risk Prediction:** Utilizes a custom-trained Gradient Boosting Classifier to assign risk levels (Low, Medium, High).
@@ -23,7 +23,7 @@ This project was built to demonstrate the seamless integration of a **dynamic we
 
 ---
 
-## 🛠 Tech Stack
+## Tech Stack
 
 **Backend & Framework:**
 - [Django](https://www.djangoproject.com/) (Python framework)
@@ -40,7 +40,7 @@ This project was built to demonstrate the seamless integration of a **dynamic we
 
 ---
 
-## 🧠 Machine Learning Engine
+## Machine Learning Engine
 
 MediTrack’s predictive capability operates on a rigorous ML pipeline integrated directly into the Django backend.
 
@@ -65,7 +65,7 @@ The pipeline utilizes a `GradientBoostingClassifier` evaluated via 5-Fold Strati
 
 ---
 
-## 📸 Screenshots
+## Screenshots
 
 | Dashboard | Log Health | Model Insights |
 | :---: | :---: | :---: |
@@ -73,7 +73,7 @@ The pipeline utilizes a `GradientBoostingClassifier` evaluated via 5-Fold Strati
 
 ---
 
-## 🚀 Installation & Local Setup
+## Installation & Local Setup
 
 Follow these steps to run MediTrack locally:
 
@@ -110,7 +110,7 @@ Visit `http://127.0.0.1:8000/` in your browser.
 
 ---
 
-## ☁️ Production Deployment
+## Production Deployment
 
 MediTrack is configured for fully managed deployment on **Render**.
 
@@ -132,7 +132,7 @@ MediTrack is configured for fully managed deployment on **Render**.
 
 ---
 
-## 🔮 Future Work
+## Future Work
 
 Our long-term architectural roadmap includes:
 1. **Real Wearable Integrations:** Connect native Apple HealthKit and Google Fit APIs to pull continuous time-series data seamlessly.
@@ -141,7 +141,7 @@ Our long-term architectural roadmap includes:
 
 ---
 
-## ⚠️ Disclaimer
+## Disclaimer
 
 **Educational Purposes Only.**  
 MediTrack is an academic project designed to demonstrate the integration of machine learning within a full-stack web application framework. It is **not** a certified medical tool, nor is it intended to diagnose, treat, cure, or prevent any physical or mental condition. Always consult a qualified healthcare provider for professional medical advice.
